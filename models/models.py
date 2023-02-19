@@ -1,6 +1,5 @@
 from pydantic import BaseModel, EmailStr, SecretStr, Field
-from typing import Optional, List
-from enum import Enum
+from typing import Optional
 
 class User(BaseModel):
     Email: EmailStr
@@ -20,12 +19,7 @@ class Supplier(BaseModel):
     address: Address
 
 class Category(BaseModel):
-    category: List[str]
-
-class Choices(Enum):
-    mech = "Mechanical"
-    ele = "Electrical"
-    diesel = "Diesel"
+    category: str
 
 class Product(BaseModel):
     category: Category
