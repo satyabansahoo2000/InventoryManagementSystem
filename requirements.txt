@@ -1,3 +1,6 @@
+deta==1.1.0
+extra_streamlit_components==0.1.56
+pandas==1.5.3
+pydantic==1.10.4
 streamlit==1.18.1
 streamlit_pydantic==0.5.0
-extra_streamlit_components==0.1.56
