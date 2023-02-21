@@ -5,7 +5,7 @@ import time
 import pandas as pd
 
 from models.models import User, Category, Supplier, Product
-from database.database import suppliers, products
+from database.database import suppliers, products, categories
 
 st.set_page_config(
     layout = "wide",
@@ -33,8 +33,16 @@ def insert_supplier(db, data):
         "Pincode": data.address.pincode
     })
 
-def update_supplier(db, data: dict, key: str):
+def insert_category(db, data):
+    return db.insert({
+        "key": data.category
+    })
+
+def update_data(db, data: dict, key: str):
     return db.put(data, key)
+
+def delete_data(db, key: str):
+    return db.delete(key)
 
 def fetch_all(db):
     res = db.fetch()
@@ -63,17 +71,67 @@ elif chosen_id == 4:
                 st.success(":tada: Product added successfully !!!")
                 time.sleep(2)
             placeholder.empty()
+
+# ----------------------------------------------------------------
+# Categories
+# ----------------------------------------------------------------
 elif chosen_id == 5:
+    db = categories()
     _, col2, col3 = st.columns([1,2,1])
-    col2.title("Category & Product List")
+    col2.title("Products List")
+    col2.markdown("---")
+
+    data = fetch_all(db)
+    res = [f['key'] for f in data]
+    if not data:
+        col2.subheader("No Categories avaiable !!! Please add categories.")
+    else:
+        category = col2.selectbox("Category", res)
+    
     with col3.expander("Add Category"):
         data = sp.pydantic_form(key="add-category", model=Category, ignore_empty_values=True, clear_on_submit=True)
         if data:
+            insert_category(db, data)
             placeholder = st.empty()
             with placeholder:
                 st.success(":tada: Category added successfully !!!")
                 time.sleep(2)
             placeholder.empty()
+    
+    with col3.expander("Update Category"):
+        key = st.text_input(label="", label_visibility="collapsed",placeholder="Enter the key of the Category")
+        if key == "":
+            st.error(":point_up_2: Please enter the key of the category")
+        else:
+            data = fetch_one(db,key=key)
+            if data is None:
+                st.error("key is not available. Please enter a valid key of the supplier.")
+            with st.form(key="update-supplier", clear_on_submit=True):
+                data["key"] = st.text_input(label="Name of the category", value=data["key"])
+                submitted2 = st.form_submit_button("Update", type="primary")
+            if submitted2:
+                update_data(db, data, key=key)
+                placeholder = st.empty()
+                with placeholder:
+                    st.success(":tada: Category updated successfully !!!")
+                    time.sleep(2)
+                placeholder.empty()
+
+    with col3.expander("Delete Category"):
+        key = st.text_input(label="", label_visibility="collapsed",placeholder="Enter the key of the Category", key="delete-category-key")
+        if key == "":
+            st.error(":point_up_2: Please enter the key of the category")
+        else:
+            if key in res:
+                delete_data(db, key)
+                placeholder = st.empty()
+                with placeholder:
+                    st.success(":tada: Category deleted successfully !!!")
+                    time.sleep(2)
+                placeholder.empty()
+            else:
+                st.error(":warning: Category not found !!!")
+# ----------------------------------------------------------------
 
 # ----------------------------------------------------------------
 # Suppliers
@@ -86,7 +144,7 @@ elif chosen_id == 6:
 
     data = fetch_all(db)
     if not data:
-        col2.subheader("No Suppliers avaiable !!! Please add suppliers.")
+        col2.subheader("No Suppliers available !!! Please add suppliers.")
     else:
         df = pd.DataFrame(fetch_all(db))
         df = df[['key', 'Name', 'Phone Number', 'GSTIN', 'Location', 'District', 'Pincode']]
@@ -103,15 +161,13 @@ elif chosen_id == 6:
             placeholder.empty()
     
     with col3.expander("Update Supplier"):
-        key = st.text_input(label="", label_visibility="collapsed",placeholder="Enter the key of the Supplier")
+        key = st.text_input(label="", label_visibility="collapsed",placeholder="Enter the key of the Supplier", key="update-supplier-key")
         if key == "":
             st.error(":point_up_2: Please enter the key of the supplier")
-            st.stop()
         else:
             data = fetch_one(db,key=key)
             if data is None:
                 st.error("key is not available. Please enter a valid key of the supplier.")
-                st.stop()
             with st.form(key="update-supplier", clear_on_submit=True):
                 data["Name"] = st.text_input(label="Name of the supplier", value=data["Name"])
                 data["Phone Number"] = st.text_input(label="Phone number", value=data["Phone Number"])
@@ -121,10 +177,25 @@ elif chosen_id == 6:
                 data["Pincode"] = st.text_input(label="Pincode", value=data["Pincode"])
                 submitted2 = st.form_submit_button("Update", type="primary")
             if submitted2:
-                update_supplier(db, data, key=key)
+                update_data(db, data, key=key)
                 placeholder = st.empty()
                 with placeholder:
                     st.success(":tada: Supplier updated successfully !!!")
                     time.sleep(2)
                 placeholder.empty()
+
+    with col3.expander("Delete Supplier"):
+        key = st.text_input(label="", label_visibility="collapsed",placeholder="Enter the key of the Supplier", key="delete-supplier-key")
+        if key == "":
+            st.error(":point_up_2: Please enter the key of the supplier")
+        else:
+            res = delete_data(db, key)
+            if res is not None:
+                placeholder = st.empty()
+                with placeholder:
+                    st.success(":tada: Supplier deleted successfully !!!")
+                    time.sleep(2)
+                placeholder.empty()
+            else:
+                st.error(":warning: Supplier not found !!!")
 # ----------------------------------------------------------------

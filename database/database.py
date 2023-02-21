@@ -9,6 +9,10 @@ def suppliers():
     deta = init_connection()
     return deta.Base("Suppliers")
 
+def categories():
+    deta = init_connection()
+    return deta.Base("Categories")
+
 def products():
     deta = init_connection()
     return deta.Base("Products")
