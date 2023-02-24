@@ -20,8 +20,3 @@ class Supplier(BaseModel):
 
 class Category(BaseModel):
     category: str
-
-class Product(BaseModel):
-    category: Category
-    name: str
-    supplier: Supplier

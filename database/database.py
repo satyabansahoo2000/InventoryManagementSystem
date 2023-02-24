@@ -16,3 +16,11 @@ def categories():
 def products():
     deta = init_connection()
     return deta.Base("Products")
+
+def purchases():
+    deta = init_connection()
+    return deta.Base("Purchases")
+
+def consumptions():
+    deta = init_connection()
+    return deta.Base("Consumptions")

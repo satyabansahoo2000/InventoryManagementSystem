@@ -4,8 +4,8 @@ import streamlit_pydantic as sp
 import time 
 import pandas as pd
 
-from models.models import User, Category, Supplier, Product
-from database.database import suppliers, products, categories
+from models.models import User, Category, Supplier
+from database.database import suppliers, products, categories, purchases, consumptions
 
 st.set_page_config(
     layout = "wide",
@@ -38,6 +38,16 @@ def insert_category(db, data):
         "key": data.category
     })
 
+def insert_product(db, data):
+    return db.insert({
+        "key": str(len(fetch_all(db))+1),
+        "Category": data['category'],
+        "Product Name": data['name'],
+        "Product Description": data['desc'],
+        "UOM": data['uom'],
+        "Supplier": data['supplierName']
+    })
+
 def update_data(db, data: dict, key: str):
     return db.put(data, key)
 
@@ -58,22 +68,19 @@ elif chosen_id == 2:
     _, col2, _ = st.columns([1,2,1])
     col2.title("Consumption / Outwards")
 elif chosen_id == 3:
-    _, col2, _ = st.columns([1,2,1])
+    _, col2, col3 = st.columns([1,2,1])
     col2.title("Purchases / Inwards")
+    col2.markdown("---")
+
+    with col3.expander("Add a Purchase"):
+        st.write("Purchases")
 elif chosen_id == 4:
     _, col2, col3 = st.columns([1,2,1])
     col2.title("Inventory")
-    with col3.expander("Add Product"):
-        data = sp.pydantic_form(key="add-product", model=Product, ignore_empty_values=True)#, clear_on_submit=True)
-        if data:
-            placeholder = st.empty()
-            with placeholder:
-                st.success(":tada: Product added successfully !!!")
-                time.sleep(2)
-            placeholder.empty()
+    col2.markdown("---")
 
 # ----------------------------------------------------------------
-# Categories
+# Categories and Products
 # ----------------------------------------------------------------
 elif chosen_id == 5:
     db = categories()
@@ -84,9 +91,9 @@ elif chosen_id == 5:
     data = fetch_all(db)
     res = [f['key'] for f in data]
     if not data:
-        col2.subheader("No Categories avaiable !!! Please add categories.")
+        pass
     else:
-        category = col2.selectbox("Category", res)
+        category_key = col2.selectbox("Category", res)
     
     with col3.expander("Add Category"):
         data = sp.pydantic_form(key="add-category", model=Category, ignore_empty_values=True, clear_on_submit=True)
@@ -131,6 +138,90 @@ elif chosen_id == 5:
                 placeholder.empty()
             else:
                 st.error(":warning: Category not found !!!")
+    
+    col3.markdown("---")
+    db1 = suppliers()
+    data1 = fetch_all(db1)
+    res1 = [f['Name'] for f in data1]
+    res2 = [f['key'] for f in data1]
+
+    db2 = products()
+
+    with col3.expander("Add Product"):
+        with st.form("add-product-form", clear_on_submit=True):
+            category = st.selectbox("Product Category", res)
+            name = st.text_input("Product Name")
+            uom = st.text_input("Unit of Measurement (UOM)")
+            desc = st.text_area("Product Description", max_chars=200)
+            supplierName = st.selectbox("Supplier Name", res1)
+
+            submitted = st.form_submit_button("Submit", type="primary")
+            if submitted:
+                data2 = {
+                    "category": category,
+                    "name": name,
+                    "desc": desc,
+                    "uom": uom,
+                    "supplierName": supplierName
+                }
+                insert_product(db2, data2)
+                placeholder = st.empty()
+                with placeholder:
+                    st.success(":tada: Product Added successfully !!!")
+                    time.sleep(2)
+                placeholder.empty()
+
+    with col3.expander("Update Product"):
+        key = st.text_input(label="", label_visibility="collapsed",placeholder="Enter the key of the Category", key="update-product-key")
+        if key == "":
+            st.error(":point_up_2: Please enter the key of the product")
+        else:
+            data = fetch_one(db2, key=key)
+            if data is None:
+                st.error("key is not available. Please enter a valid key of the supplier.")
+            else:
+                with st.form(key="update-product", clear_on_submit=True):
+                    data["Category"] = st.selectbox("Product Category", res, index=res.index(data["Category"]))
+                    data["Product Name"] = st.text_input(label="Name of the Product", value=data["Product Name"])
+                    data["Product Description"] = st.text_input(label="Description of Product", value=data["Product Description"])
+                    data["UOM"] = st.text_input(label="Unit of measurement", value=data["UOM"])
+                    data["Supplier"] = st.selectbox("Supplier Name", res1, index=res1.index(data["Supplier"]))
+                    submitted2 = st.form_submit_button("Update", type="primary")
+                if submitted2:
+                    update_data(db2, data, key=key)
+                    placeholder = st.empty()
+                    with placeholder:
+                        st.success(":tada: Category updated successfully !!!")
+                        time.sleep(2)
+                    placeholder.empty()
+
+    with col3.expander("Delete Product"):
+        key = st.text_input(label="", label_visibility="collapsed",placeholder="Enter the key of the Porduct", key="delete-product-key")
+        if key == "":
+            st.error(":point_up_2: Please enter the key of the product")
+        else:
+            if key in res2:
+                delete_data(db2, key)
+                placeholder = st.empty()
+                with placeholder:
+                    st.success(":tada: Product deleted successfully !!!")
+                    time.sleep(2)
+                placeholder.empty()
+            else:
+                st.error(":warning: Product not found !!!")
+
+    with col2:
+        data = fetch_all(db2)
+        if not data:
+            st.error("No Products available !!! Please add products.")
+        else:
+            data = pd.DataFrame(data)
+            data = data[data['Category'] == category_key]
+            data = data[['key', 'Product Name', 'UOM', 'Product Description', 'Supplier']]
+            if data.empty:
+                st.error(f"Products in {category_key} category not found. Please add products to {category_key} category.")
+            else:
+                st.dataframe(data, use_container_width=True)
 # ----------------------------------------------------------------
 
 # ----------------------------------------------------------------
@@ -138,11 +229,13 @@ elif chosen_id == 5:
 # ----------------------------------------------------------------
 elif chosen_id == 6:
     db = suppliers()
+    data = fetch_all(db)
+    res = [f['key'] for f in data]
+    
     _, col2, col3 = st.columns([1,2,1])
     col2.title("Suppliers List")
     col2.markdown("---")
 
-    data = fetch_all(db)
     if not data:
         col2.subheader("No Suppliers available !!! Please add suppliers.")
     else:
@@ -189,8 +282,8 @@ elif chosen_id == 6:
         if key == "":
             st.error(":point_up_2: Please enter the key of the supplier")
         else:
-            res = delete_data(db, key)
-            if res is not None:
+            if key in res:
+                delete_data(db, key)
                 placeholder = st.empty()
                 with placeholder:
                     st.success(":tada: Supplier deleted successfully !!!")
