@@ -64,24 +64,46 @@ def fetch_one(db, key):
 
 if chosen_id == 1:
     pass
+# ----------------------------------------------------------------
+# Consumption / Outwards
+# ----------------------------------------------------------------
 elif chosen_id == 2:
     _, col2, _ = st.columns([1,2,1])
     col2.title("Consumption / Outwards")
+# ----------------------------------------------------------------
+# Purchases / Inwards
+# ----------------------------------------------------------------
 elif chosen_id == 3:
     _, col2, col3 = st.columns([1,2,1])
     col2.title("Purchases / Inwards")
     col2.markdown("---")
+    
+    db = products()
+    db2 = purchases()
+    data = fetch_all(db)
+    df = pd.DataFrame(data)
+    col2.dataframe(data)
 
-    with col3.expander("Add a Purchase"):
-        st.write("Purchases")
+    with col3.expander("Add a purchase"):
+        date = st.date_input("Date")
+        pCat = set(df['Category'])
+        category = st.selectbox("Product Category", pCat)
+        pName = df.loc[df['Category'] == category, "Product Name"]
+        name = st.selectbox("Product Name", pName)
+        uom = df.loc[(df['Category'] == category) & (df['Product Name'] == name), "UOM"].item()
+        desc = df.loc[(df['Category'] == category) & (df['Product Name'] == name), "Product Description"].item()
+        uom = st.text_input("Unit of Measurement (UOM)", value=uom)
+        desc = st.text_area("Product Description", max_chars=200, value=desc)
+        submitted = st.button("Submit", type="primary")
+# ----------------------------------------------------------------
+# Inventory
+# ----------------------------------------------------------------
 elif chosen_id == 4:
     _, col2, col3 = st.columns([1,2,1])
     col2.title("Inventory")
     col2.markdown("---")
 
-# ----------------------------------------------------------------
-# Categories and Products
-# ----------------------------------------------------------------
+
 elif chosen_id == 5:
     db = categories()
     _, col2, col3 = st.columns([1,2,1])
