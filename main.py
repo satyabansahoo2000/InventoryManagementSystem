@@ -3,6 +3,7 @@ import extra_streamlit_components as stx
 import streamlit_pydantic as sp
 import time 
 import pandas as pd
+from datetime import date
 
 from models.models import User, Category, Supplier
 from database.database import suppliers, products, categories, purchases, consumptions
@@ -37,6 +38,11 @@ def insert_category(db, data):
     return db.insert({
         "key": data.category
     })
+
+def insert_purchase(db, data):
+    Key = {"key": str(len(fetch_all(db))+1)}
+    data.update(Key)
+    return db.insert(data)
 
 def insert_product(db, data):
     return db.insert({
@@ -82,19 +88,58 @@ elif chosen_id == 3:
     db2 = purchases()
     data = fetch_all(db)
     df = pd.DataFrame(data)
-    col2.dataframe(data)
+
+    def clear_form():
+        st.session_state['date'] = date.today()
+        st.session_state['units'] = 1
+        st.session_state['rate'] = 0.00
 
     with col3.expander("Add a purchase"):
-        date = st.date_input("Date")
+        date_ = st.date_input("Date", key='date')
+        
         pCat = set(df['Category'])
         category = st.selectbox("Product Category", pCat)
+        
         pName = df.loc[df['Category'] == category, "Product Name"]
         name = st.selectbox("Product Name", pName)
+        
         uom = df.loc[(df['Category'] == category) & (df['Product Name'] == name), "UOM"].item()
         desc = df.loc[(df['Category'] == category) & (df['Product Name'] == name), "Product Description"].item()
-        uom = st.text_input("Unit of Measurement (UOM)", value=uom)
+        uom = st.text_input("Unit of Measurement (UOM)", value=uom)    
         desc = st.text_area("Product Description", max_chars=200, value=desc)
-        submitted = st.button("Submit", type="primary")
+        
+        units = st.number_input("Units purchases", min_value=1, key="units")
+        rate = st.number_input("Rate", min_value=0.00, key="rate")
+        total = st.number_input("Total Price", value=round(units*rate, 2), disabled=True, key="total")
+        data = {
+            "Date": date_.isoformat(),
+            "Category": category,
+            "Product Name": name,
+            "UOM": uom,
+            "Description": desc,
+            "Units Purchased": units,
+            "Rate": rate,
+            "Total Price": total
+        }
+        submitted = st.button("Submit", key="button-key", type="primary")
+        if submitted:
+            insert_purchase(db2, data)
+            placeholder = st.empty()
+            with placeholder:
+                st.success(":tada: Purchase added successfully !!!")
+                time.sleep(2)
+            placeholder.empty()
+
+    with col3.expander("Update a purchase"):
+        pass
+
+    data2 = fetch_all(db2)
+    df2 = pd.DataFrame(data2)
+    if df2.empty:
+        col2.warning(":warning: Purchases are not available !!!")
+    else:
+        df2 = df2[['Date', 'Category', 'Product Name', 'Description', 'UOM', 'Units Purchased', 'Rate', 'Total Price']]
+        col2.dataframe(df2, use_container_width=True)
 # ----------------------------------------------------------------
 # Inventory
 # ----------------------------------------------------------------
